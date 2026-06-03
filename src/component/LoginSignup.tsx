@@ -1,28 +1,28 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { DevTool } from "@hookform/devtools";
-
-type FormValues = {
-  firstName: string;
-  lastName: string;
-  email: string;
-  city: string;
-  state: string;
-  address: string;
-  age: number;
-  gender: string;
-  contactNumber: string;
-  profileImage: FileList;
-  birthDate: string;
-  password: string;
-  confirmPassword: string;
-  agreed: boolean;
-};
+import {
+  loginSchema,
+  signupSchema,
+  type FormValues,
+  type SignupFormValues,
+} from "../schema/formSchema";
 
 const LoginSignup = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
+  const [formMessage, setFormMessage] = useState("");
+  const navigate = useNavigate();
 
-  const form = useForm<FormValues>({
+  const {
+    register,
+    control,
+    handleSubmit,
+    reset,
+    formState: { errors },
+  } = useForm<FormValues>({
+    resolver: zodResolver(isLoggedIn ? loginSchema : signupSchema),
     shouldUnregister: true,
     defaultValues: {
       firstName: "",
@@ -31,26 +31,76 @@ const LoginSignup = () => {
       city: "",
       state: "",
       address: "",
-      age: 0,
+      age: 18,
       gender: "",
       contactNumber: "",
       birthDate: "",
+      profileImage: undefined,
       password: "",
       confirmPassword: "",
       agreed: false,
     },
   });
 
-  const {
-    register,
-    control,
-    handleSubmit,
-    formState: { errors },
-    getValues,
-  } = form;
+  const getErrorText = (message: unknown) =>
+    typeof message === "string" ? message : "";
 
-  const onSubmit = (data: FormValues) => {
-    console.log(data);
+  const onSubmit = (data: Record<string, unknown>) => {
+    const formData = data;
+    setFormMessage("");
+
+    if (isLoggedIn) {
+      const savedUser = localStorage.getItem("user");
+
+      if (!savedUser) {
+        setFormMessage("No account found. Please signup first.");
+        return;
+      }
+
+      const parsedUser: SignupFormValues = JSON.parse(savedUser);
+      const email = String(formData.email || "");
+      const password = String(formData.password || "");
+
+      if (
+        String(parsedUser.email) !== email ||
+        String(parsedUser.password) !== password
+      ) {
+        setFormMessage("Email or password is incorrect.");
+        return;
+      }
+
+      localStorage.setItem("loggedIn", "true");
+      navigate("/profile");
+      return;
+    }
+
+    const profileImage = formData.profileImage;
+
+    const profileImageName =
+      profileImage instanceof FileList && profileImage.length > 0
+        ? profileImage[0]?.name || ""
+        : "";
+
+    const { confirmPassword, ...rest } = formData;
+    void confirmPassword;
+
+    const userToSave = {
+      ...rest,
+      agreed: Boolean(rest.agreed),
+      profileImage: profileImageName,
+      password: formData.password,
+    };
+
+    localStorage.setItem("user", JSON.stringify(userToSave));
+    setFormMessage("Registration complete. You can now login.");
+    setIsLoggedIn(true);
+    reset();
+  };
+
+  const toggleMode = () => {
+    setFormMessage("");
+    setIsLoggedIn((prev) => !prev);
+    reset();
   };
 
   return (
@@ -66,188 +116,154 @@ const LoginSignup = () => {
           noValidate
         >
           {!isLoggedIn && (
-            <div className="grid grid-cols-2 gap-4">
-              {/* first name */}
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
               <div>
                 <input
                   type="text"
                   placeholder="First Name"
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("firstName", {
-                    required: "First Name is required",
-                  })}
+                  {...register("firstName")}
                 />
                 <p className="text-sm text-red-500">
-                  {errors.firstName?.message}
+                  {getErrorText(errors.firstName?.message)}
                 </p>
               </div>
 
-              {/* last name */}
               <div>
                 <input
                   type="text"
                   placeholder="Last Name"
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("lastName", {
-                    required: "Last Name is required",
-                  })}
+                  {...register("lastName")}
                 />
                 <p className="text-sm text-red-500">
-                  {errors.lastName?.message}
+                  {getErrorText(errors.lastName?.message)}
                 </p>
               </div>
 
-              {/* city */}
               <div>
                 <input
                   type="text"
                   placeholder="City"
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("city", {
-                    required: "City is required",
-                  })}
+                  {...register("city")}
                 />
-                <p className="text-sm text-red-500">{errors.city?.message}</p>
+                <p className="text-sm text-red-500">
+                  {getErrorText(errors.city?.message)}
+                </p>
               </div>
 
-              {/* state */}
               <div>
                 <input
                   type="text"
                   placeholder="State"
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("state", {
-                    required: "State is required",
-                  })}
-                />
-                <p className="text-sm text-red-500">{errors.state?.message}</p>
-              </div>
-
-              {/* address */}
-              <div className="col-span-2">
-                <textarea
-                  placeholder="Address"
-                  className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("address", {
-                    required: "Address is required",
-                  })}
+                  {...register("state")}
                 />
                 <p className="text-sm text-red-500">
-                  {errors.address?.message}
+                  {getErrorText(errors.state?.message)}
                 </p>
               </div>
 
-              {/* age */}
+              <div className="md:col-span-2">
+                <textarea
+                  placeholder="Address"
+                  className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
+                  {...register("address")}
+                />
+                <p className="text-sm text-red-500">
+                  {getErrorText(errors.address?.message)}
+                </p>
+              </div>
+
               <div>
-                <div className="flex gap-2 align-middle justify-center">
-                  <label htmlFor="age" className="self-center">
-                    Age
-                  </label>
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                  <label className="text-sm font-medium sm:w-20">Age</label>
                   <input
                     type="number"
                     placeholder="Age"
-                    className="w-7/4 rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                    {...register("age", {
-                      required: "Age is required",
-                      min: {
-                        value: 18,
-                        message: "Age must be 18+",
-                      },
-                    })}
+                    className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
+                    {...register("age", { valueAsNumber: true })}
                   />
                 </div>
-                <p className="text-sm text-red-500">{errors.age?.message}</p>
+                <p className="text-sm text-red-500">
+                  {getErrorText(errors.age?.message)}
+                </p>
               </div>
 
-              {/* gender */}
               <div>
                 <select
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("gender", {
-                    required: "Gender is required",
-                  })}
+                  {...register("gender")}
                 >
                   <option value="">Select Gender</option>
                   <option value="Male">Male</option>
                   <option value="Female">Female</option>
                   <option value="Other">Other</option>
                 </select>
-                <p className="text-sm text-red-500">{errors.gender?.message}</p>
+                <p className="text-sm text-red-500">
+                  {getErrorText(errors.gender?.message)}
+                </p>
               </div>
 
-              {/* contact number */}
               <div>
                 <input
                   type="text"
                   placeholder="Contact Number"
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("contactNumber", {
-                    required: "Contact number required",
-                    pattern: {
-                      value: /^[0-9]{10}$/,
-                      message: "Must be 10 digits",
-                    },
-                  })}
+                  {...register("contactNumber")}
                 />
                 <p className="text-sm text-red-500">
-                  {errors.contactNumber?.message}
+                  {getErrorText(errors.contactNumber?.message)}
                 </p>
               </div>
 
-              {/* birth date */}
               <div>
                 <input
                   type="date"
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("birthDate", {
-                    required: "Birth date required",
-                  })}
+                  {...register("birthDate")}
                 />
                 <p className="text-sm text-red-500">
-                  {errors.birthDate?.message}
+                  {getErrorText(errors.birthDate?.message)}
                 </p>
               </div>
 
-              {/* profile image */}
-              <div className="col-span-2">
+              <div className="md:col-span-2">
                 <input
                   type="file"
                   className="w-full rounded-md border p-3"
-                  {...register("profileImage", {
-                    required: "Profile image required",
-                  })}
+                  {...register("profileImage")}
                 />
                 <p className="text-sm text-red-500">
-                  {errors.profileImage?.message}
+                  {getErrorText(errors.profileImage?.message)}
                 </p>
               </div>
             </div>
           )}
 
-          {/* email */}
           <div>
             <input
               type="email"
               placeholder="Email"
               className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-              {...register("email", {
-                required: "Email is Required",
-              })}
+              {...register("email")}
             />
-            <p className="text-sm text-red-500">{errors.email?.message}</p>
+            <p className="text-sm text-red-500">
+              {getErrorText(errors.email?.message)}
+            </p>
           </div>
 
-          {/* password */}
           <div>
             <input
               type="password"
               placeholder="Password"
               className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-              {...register("password", {
-                required: "Password is Required",
-              })}
+              {...register("password")}
             />
-            <p className="text-sm text-red-500">{errors.password?.message}</p>
+            <p className="text-sm text-red-500">
+              {getErrorText(errors.password?.message)}
+            </p>
           </div>
 
           {!isLoggedIn && (
@@ -257,30 +273,27 @@ const LoginSignup = () => {
                   type="password"
                   placeholder="Confirm Password"
                   className="w-full rounded-md border p-3 outline-none focus:ring-2 focus:ring-blue-400"
-                  {...register("confirmPassword", {
-                    required: "Confirm password required",
-                    validate: (value) =>
-                      value === getValues("password") ||
-                      "Passwords do not match",
-                  })}
+                  {...register("confirmPassword")}
                 />
                 <p className="text-sm text-red-500">
-                  {errors.confirmPassword?.message}
+                  {getErrorText(errors.confirmPassword?.message)}
                 </p>
               </div>
 
-              <label className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  {...register("agreed", {
-                    required: "You must accept privacy policy",
-                  })}
-                />
-                I agree to privacy policy
-              </label>
-
-              <p className="text-sm text-red-500">{errors.agreed?.message}</p>
+              <div>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" {...register("agreed")} />I agree to
+                  privacy policy
+                </label>
+                <p className="text-sm text-red-500">
+                  {getErrorText(errors.agreed?.message)}
+                </p>
+              </div>
             </>
+          )}
+
+          {formMessage && (
+            <p className="text-center text-sm text-red-600">{formMessage}</p>
           )}
 
           <button
@@ -295,9 +308,9 @@ const LoginSignup = () => {
 
         <p className="mt-4 text-center text-sm">
           {isLoggedIn ? "Don't have an account?" : "Already have an account?"}
-
           <button
-            onClick={() => setIsLoggedIn(!isLoggedIn)}
+            type="button"
+            onClick={toggleMode}
             className="ml-2 font-semibold text-blue-500 hover:underline"
           >
             {isLoggedIn ? "Signup" : "Login"}
