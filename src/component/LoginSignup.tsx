@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,11 +9,19 @@ import {
   type FormValues,
   type SignupFormValues,
 } from "../schema/formSchema";
+import useAuth from "../context/useAuth";
 
 const LoginSignup = () => {
   const [isLoggedIn, setIsLoggedIn] = useState(true);
   const [formMessage, setFormMessage] = useState("");
   const navigate = useNavigate();
+  const auth = useAuth();
+
+  useEffect(() => {
+    if (auth.user) {
+      navigate("/profile");
+    }
+  });
 
   const {
     register,
@@ -49,51 +57,89 @@ const LoginSignup = () => {
     const formData = data;
     setFormMessage("");
 
+    // Login Logic
     if (isLoggedIn) {
       const savedUser = localStorage.getItem("user");
 
+      // Check if user data exists in localStorage
       if (!savedUser) {
         setFormMessage("No account found. Please signup first.");
         return;
       }
 
-      const parsedUser: SignupFormValues = JSON.parse(savedUser);
+      // Parse users safely or fallback to empty array
+      const parsedAllUser: SignupFormValues[] = JSON.parse(savedUser) || [];
+
       const email = String(formData.email || "");
       const password = String(formData.password || "");
 
-      if (
-        String(parsedUser.email) !== email ||
-        String(parsedUser.password) !== password
-      ) {
+      // Find user by email
+      const parsedUser = parsedAllUser.find((user) => user.email === email);
+
+      // Validate user existence and password
+      if (!parsedUser || parsedUser.password !== password) {
         setFormMessage("Email or password is incorrect.");
         return;
       }
 
+      // Store login state and redirect
       localStorage.setItem("loggedIn", "true");
+      auth.login(parsedUser);
       navigate("/profile");
       return;
     }
 
+    // Signup Logic
+
     const profileImage = formData.profileImage;
 
+    // Get uploaded image name
     const profileImageName =
       profileImage instanceof FileList && profileImage.length > 0
         ? profileImage[0]?.name || ""
         : "";
 
+    // Remove confirmPassword from saved data
     const { confirmPassword, ...rest } = formData;
     void confirmPassword;
 
+    // Prepare user object to save
     const userToSave = {
       ...rest,
       agreed: Boolean(rest.agreed),
       profileImage: profileImageName,
-      password: formData.password,
+      password: String(formData.password || ""),
     };
 
-    localStorage.setItem("user", JSON.stringify(userToSave));
+    const allUser = localStorage.getItem("user");
+
+    // Parse existing users safely
+    const parsedAllUser: SignupFormValues[] = allUser
+      ? JSON.parse(allUser)
+      : [];
+
+    // Check if email already exists
+    const ifUserAlreadyHave = parsedAllUser.find(
+      (user) => user.email === String(formData.email || ""),
+    );
+
+    if (ifUserAlreadyHave) {
+      alert("User is already present with this email");
+      return;
+    }
+
+    // Save new user without creating nested array
+    localStorage.setItem(
+      "user",
+      JSON.stringify([...parsedAllUser, userToSave]),
+    );
+
     setFormMessage("Registration complete. You can now login.");
+
+    // Switch to login page
     setIsLoggedIn(true);
+
+    // Reset form fields
     reset();
   };
 

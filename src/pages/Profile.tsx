@@ -1,46 +1,16 @@
-import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-
-type StoredUser = {
-  firstName?: string;
-  lastName?: string;
-  email?: string;
-  city?: string;
-  state?: string;
-  address?: string;
-  age?: string | number;
-  gender?: string;
-  contactNumber?: string;
-  birthDate?: string;
-  profileImage?: string;
-  agreed?: boolean;
-};
+import useAuth from "../context/useAuth";
 
 const Profile = () => {
   const navigate = useNavigate();
-  const [user] = useState<StoredUser | null>(() => {
-    const savedUser = localStorage.getItem("user");
-    const isLoggedIn = localStorage.getItem("loggedIn") === "true";
-
-    if (!savedUser || !isLoggedIn) {
-      return null;
-    }
-
-    return JSON.parse(savedUser);
-  });
-
-  useEffect(() => {
-    if (!user) {
-      navigate("/", { replace: true });
-    }
-  }, [navigate, user]);
+  const auth = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("loggedIn");
+    auth.logout();
     navigate("/", { replace: true });
   };
 
-  if (!user) {
+  if (!auth.user) {
     return null;
   }
 
@@ -51,7 +21,7 @@ const Profile = () => {
           <div>
             <h1 className="text-3xl font-bold">Profile</h1>
             <p className="text-sm text-gray-600">
-              Welcome back, {user.firstName || "User"}.
+              Welcome back, {auth.user.firstName || "User"}.
             </p>
           </div>
           <button
@@ -66,48 +36,58 @@ const Profile = () => {
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">First Name</p>
             <p className="mt-1 text-lg font-semibold">
-              {user.firstName || "-"}
+              {auth.user.firstName || "-"}
             </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">Last Name</p>
-            <p className="mt-1 text-lg font-semibold">{user.lastName || "-"}</p>
+            <p className="mt-1 text-lg font-semibold">
+              {auth.user.lastName || "-"}
+            </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">Email</p>
-            <p className="mt-1 text-lg font-semibold">{user.email || "-"}</p>
+            <p className="mt-1 text-lg font-semibold">
+              {auth.user.email || "-"}
+            </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">Contact</p>
             <p className="mt-1 text-lg font-semibold">
-              {user.contactNumber || "-"}
+              {auth.user.contactNumber || "-"}
             </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">City</p>
-            <p className="mt-1 text-lg font-semibold">{user.city || "-"}</p>
+            <p className="mt-1 text-lg font-semibold">
+              {auth.user.city || "-"}
+            </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">State</p>
-            <p className="mt-1 text-lg font-semibold">{user.state || "-"}</p>
+            <p className="mt-1 text-lg font-semibold">
+              {auth.user.state || "-"}
+            </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">Birth Date</p>
             <p className="mt-1 text-lg font-semibold">
-              {user.birthDate || "-"}
+              {auth.user.birthDate || "-"}
             </p>
           </div>
           <div className="rounded-xl border p-4">
             <p className="text-sm text-gray-500">Profile Image</p>
             <p className="mt-1 text-lg font-semibold">
-              {user.profileImage || "No file uploaded"}
+              {auth.user.profileImage instanceof FileList
+                ? auth.user.profileImage[0]?.name || "No file uploaded"
+                : auth.user.profileImage || "No file uploaded"}
             </p>
           </div>
         </div>
 
         <div className="mt-6 rounded-xl border p-4">
           <p className="text-sm text-gray-500">Address</p>
-          <p className="mt-1 text-base">{user.address || "-"}</p>
+          <p className="mt-1 text-base">{auth.user.address || "-"}</p>
         </div>
       </div>
     </div>
